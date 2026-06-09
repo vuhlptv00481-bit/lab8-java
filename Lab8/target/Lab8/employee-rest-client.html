@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Employee Management - REST Consumer</title>
+</head>
+<body>
+<div>
+    <input id="id" placeholder="Id?"><br>
+    <input id="name" placeholder="Name?"><br>
+    <input type="radio" id="male" name="gender" checked> Male
+    <input type="radio" id="female" name="gender"> Female<br>
+    <input id="salary" placeholder="Salary?">
+    <hr>
+</div>
+<hr>
+<button onclick="ctrl.create()">Create</button>
+<button onclick="ctrl.update()">Update</button>
+<button onclick="ctrl.delete()">Delete</button>
+<button onclick="ctrl.reset()">Reset</button>
+
+<table border="1" style="width: 100%">
+    <thead>
+    <tr>
+        <th>Id</th>
+        <th>Name</th>
+        <th>Gender</th>
+        <th>Salary</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody id="list"></tbody>
+</table>
+
+<script>
+    var pathArray = window.location.pathname.split('/');
+    var contextPath = (pathArray.length > 2) ? "/" + pathArray[1] : "";
+    const BASE_URL = contextPath + "/employees";
+
+    var ctrl = {
+        setForm(employee) {
+            document.getElementById("id").value = employee.id || "";
+            document.getElementById("name").value = employee.name || "";
+            document.getElementById("salary").value = employee.salary || 0;
+            document.getElementById("male").checked = employee.gender;
+            document.getElementById("female").checked = !employee.gender;
+        },
+        getForm() {
+            return {
+                id: document.getElementById("id").value,
+                name: document.getElementById("name").value,
+                gender: document.getElementById("male").checked,
+                salary: parseFloat(document.getElementById("salary").value) || 0
+            };
+        },
+        fillToTable(employees) {
+            var rows = [];
+            if (employees && Array.isArray(employees)) {
+                employees.forEach(e => {
+                    var row = `<tr>
+                        <td>${e.id}</td>
+                        <td>${e.name}</td>
+                        <td>${e.gender ? 'Male' : 'Female'}</td>
+                        <td>${e.salary}</td>
+                        <td><a href="javascript:ctrl.edit('${e.id}')">Edit</a></td>
+                    </tr>`;
+                    rows.push(row);
+                });
+            }
+            document.getElementById("list").innerHTML = rows.join('');
+        },
+        loadAll() {
+            fetch(BASE_URL)
+                .then(resp => {
+                    if (!resp.ok) throw new Error("Server trả về mã lỗi HTTP: " + resp.status);
+                    return resp.json();
+                })
+                .then(data => this.fillToTable(data))
+                .catch(err => {
+                    console.error(err);
+                    alert("Không thể tải dữ liệu. Lỗi cụ thể: " + err.message);
+                });
+        },
+        create() {
+            fetch(BASE_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(this.getForm())
+            }).then(() => { this.loadAll(); this.reset(); });
+        },
+        update() {
+            var data = this.getForm();
+            fetch(`${BASE_URL}/${data.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            }).then(() => { this.loadAll(); this.reset(); });
+        },
+        delete() {
+            var id = document.getElementById("id").value;
+            fetch(`${BASE_URL}/${id}`, { method: "DELETE" })
+                .then(() => { this.loadAll(); this.reset(); });
+        },
+        reset() {
+            this.setForm({ id: "", name: "", salary: 0, gender: true });
+        },
+        edit(id) {
+            fetch(`${BASE_URL}/${id}`)
+                .then(resp => resp.json())
+                .then(employee => this.setForm(employee));
+        }
+    };
+
+    ctrl.loadAll();
+</script>
+</body>
+</html>
